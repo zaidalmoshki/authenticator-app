@@ -1,0 +1,28 @@
+name: authenticator_app
+description: Secure, polished authenticator app.
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  mobile_scanner: ^5.1.1
+  totp: ^0.3.0
+  flutter_secure_storage: ^9.2.2
+  local_auth: ^2.2.0
+  flutter_windowmanager: ^0.2.0
+  crypto: ^3.0.3
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
