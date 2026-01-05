@@ -60,6 +60,7 @@ class _LockScreenState extends State<LockScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final lockState = context.watch<AppLockCubit>().state;
+    final settings = context.watch<SettingsCubit>().state;
     return Material(
       color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
       child: SafeArea(
@@ -112,7 +113,7 @@ class _LockScreenState extends State<LockScreen> {
                     child: Text(l10n.unlock),
                   ),
                   const SizedBox(height: 12),
-                  if (lockState.biometricsAvailable)
+                  if (lockState.biometricsAvailable && settings.biometricsEnabled)
                     TextButton.icon(
                       onPressed: _unlockWithBiometrics,
                       icon: const Icon(Icons.fingerprint_rounded),

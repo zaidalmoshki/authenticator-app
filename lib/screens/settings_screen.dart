@@ -22,31 +22,38 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _Section(title: l10n.security, children: [
-            SwitchListTile.adaptive(
-              value: settings.appLockEnabled,
+            ListTile(
               title: Text(l10n.appLock),
-              subtitle: Text(l10n.appLockSubtitle),
-              onChanged: (enabled) async {
-                if (enabled && !lockState.hasPin) {
-                  final pin = await _showPinSetup(context);
-                  if (pin == null) return;
-                  await lockController.setPin(pin);
-                }
-                final updated = settings.copyWith(appLockEnabled: enabled);
-                await context.read<SettingsCubit>().update(updated);
-                HapticFeedback.selectionClick();
-              },
+              subtitle: Text(l10n.appLockEnforced),
+              trailing: Icon(
+                Icons.lock_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
-            SwitchListTile.adaptive(
-              value: settings.biometricsEnabled,
+            ListTile(
               title: Text(l10n.biometrics),
-              subtitle: Text(l10n.biometricsSubtitle),
-              onChanged: lockState.biometricsAvailable
-                  ? (enabled) async {
-                      final updated =
-                          settings.copyWith(biometricsEnabled: enabled);
+              subtitle: Text(
+                lockState.biometricsAvailable
+                    ? l10n.biometricsRequired
+                    : l10n.securitySetupBiometricUnavailable,
+              ),
+              trailing: Icon(
+                lockState.biometricsAvailable && settings.biometricsEnabled
+                    ? Icons.verified_rounded
+                    : Icons.block,
+                color: lockState.biometricsAvailable && settings.biometricsEnabled
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.error,
+              ),
+              onTap: lockState.biometricsAvailable &&
+                      !settings.biometricsEnabled
+                  ? () async {
+                      final updated = settings.copyWith(
+                        biometricsEnabled: true,
+                        appLockEnabled: true,
+                      );
                       await context.read<SettingsCubit>().update(updated);
-                      HapticFeedback.selectionClick();
+                      HapticFeedback.lightImpact();
                     }
                   : null,
             ),

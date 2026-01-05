@@ -26,7 +26,7 @@ class AppSettings extends Equatable {
       ];
 
   factory AppSettings.defaults() => const AppSettings(
-        appLockEnabled: false,
+        appLockEnabled: true,
         biometricsEnabled: true,
         clipboardAutoClear: true,
         screenshotProtection: true,
@@ -59,7 +59,7 @@ class AppSettings extends Equatable {
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     return AppSettings(
-      appLockEnabled: json['appLockEnabled'] as bool? ?? false,
+      appLockEnabled: json['appLockEnabled'] as bool? ?? true,
       biometricsEnabled: json['biometricsEnabled'] as bool? ?? true,
       clipboardAutoClear: json['clipboardAutoClear'] as bool? ?? true,
       screenshotProtection: json['screenshotProtection'] as bool? ?? true,

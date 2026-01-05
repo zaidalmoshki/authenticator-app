@@ -80,6 +80,20 @@ class AppLocalizations {
       'copyCode': 'Copy code',
       'deleteToken': 'Delete token',
       'deleteMessage': 'This token will be removed from your device.',
+      'toggleTorch': 'Toggle torch',
+      'torchUnavailable': 'Torch not available',
+      'securitySetupTitle': 'Protect access',
+      'securitySetupSubtitle': 'Set a PIN and enable biometrics to continue.',
+      'securitySetupPinRequirement': 'Create a PIN to secure the app',
+      'savePinAction': 'Save PIN',
+      'securitySetupAppLockRequirement': 'App lock must stay enabled',
+      'enableAppLock': 'Enable app lock',
+      'securitySetupBiometricRequirement': 'Enable biometrics on this device',
+      'securitySetupBiometricUnavailable': 'Biometrics unavailable on this device',
+      'enableBiometrics': 'Enable biometrics',
+      'pinValidationError': 'PINs must match and be at least 4 digits.',
+      'appLockEnforced': 'Required to open the app',
+      'biometricsRequired': 'Required when supported',
     },
     'ar': {
       'appTitle': 'المصادِق',
@@ -136,6 +150,20 @@ class AppLocalizations {
       'copyCode': 'نسخ الكود',
       'deleteToken': 'حذف الرمز',
       'deleteMessage': 'سيتم إزالة هذا الرمز من جهازك.',
+      'toggleTorch': 'Toggle torch',
+      'torchUnavailable': 'Torch not available',
+      'securitySetupTitle': 'Protect access',
+      'securitySetupSubtitle': 'Set a PIN and enable biometrics to continue.',
+      'securitySetupPinRequirement': 'Create a PIN to secure the app',
+      'savePinAction': 'Save PIN',
+      'securitySetupAppLockRequirement': 'App lock must stay enabled',
+      'enableAppLock': 'Enable app lock',
+      'securitySetupBiometricRequirement': 'Enable biometrics on this device',
+      'securitySetupBiometricUnavailable': 'Biometrics unavailable on this device',
+      'enableBiometrics': 'Enable biometrics',
+      'pinValidationError': 'PINs must match and be at least 4 digits.',
+      'appLockEnforced': 'Required to open the app',
+      'biometricsRequired': 'Required when supported',
     },
   };
 
@@ -206,6 +234,23 @@ class AppLocalizations {
   String get copyCode => _t('copyCode');
   String get deleteToken => _t('deleteToken');
   String get deleteMessage => _t('deleteMessage');
+  String get toggleTorch => _t('toggleTorch');
+  String get torchUnavailable => _t('torchUnavailable');
+  String get securitySetupTitle => _t('securitySetupTitle');
+  String get securitySetupSubtitle => _t('securitySetupSubtitle');
+  String get securitySetupPinRequirement => _t('securitySetupPinRequirement');
+  String get savePinAction => _t('savePinAction');
+  String get securitySetupAppLockRequirement =>
+      _t('securitySetupAppLockRequirement');
+  String get enableAppLock => _t('enableAppLock');
+  String get securitySetupBiometricRequirement =>
+      _t('securitySetupBiometricRequirement');
+  String get securitySetupBiometricUnavailable =>
+      _t('securitySetupBiometricUnavailable');
+  String get enableBiometrics => _t('enableBiometrics');
+  String get pinValidationError => _t('pinValidationError');
+  String get appLockEnforced => _t('appLockEnforced');
+  String get biometricsRequired => _t('biometricsRequired');
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

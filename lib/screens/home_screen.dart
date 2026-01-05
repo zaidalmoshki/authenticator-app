@@ -2,19 +2,17 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_settings.dart';
 import '../models/token_entry.dart';
 import '../l10n/app_localizations.dart';
-import '../services/clipboard_service.dart';
 import '../services/secure_window.dart';
-import '../services/totp_service.dart';
 import '../state/app_providers.dart';
 import '../widgets/token_tile.dart';
 import 'add_token_screen.dart';
 import 'lock_screen.dart';
+import 'security_setup_screen.dart';
 import 'settings_screen.dart';
 import 'token_detail_screen.dart';
 
@@ -26,8 +24,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  Timer? _ticker;
-  final ValueNotifier<DateTime> _now = ValueNotifier<DateTime>(DateTime.now());
   StreamSubscription<AppSettings>? _settingsSub;
   bool? _secureWindowEnabled;
 
@@ -47,17 +43,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context.read<AppLockCubit>().updateSettings(next);
       _configureSecureWindow(next.screenshotProtection);
     });
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      _now.value = DateTime.now();
-    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _settingsSub?.cancel();
-    _ticker?.cancel();
-    _now.dispose();
     super.dispose();
   }
 
@@ -72,9 +63,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final List<TokenEntry> tokens = context.watch<TokensCubit>().state;
-    final TotpService totpService = context.read<TotpService>();
     final AppSettings settings = context.watch<SettingsCubit>().state;
     final AppLockState lockState = context.watch<AppLockCubit>().state;
+    final bool needsSecuritySetup = _needsSecuritySetup(settings, lockState);
+
+    if (needsSecuritySetup) {
+      return const SecuritySetupScreen();
+    }
 
     return Stack(
       children: [
@@ -101,10 +96,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: tokens.isEmpty
                 ? _EmptyState(
                     onAdd: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AddTokenScreen()),
-                    );
-                  },
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AddTokenScreen()),
+                      );
+                    },
                     title: l10n.emptyTitle,
                     subtitle: l10n.emptySubtitle,
                     buttonLabel: l10n.addToken,
@@ -115,20 +110,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       final entry = tokens[index];
                       return TokenTile(
                         entry: entry,
-                        totpService: totpService,
-                        timeListenable: _now,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => TokenDetailScreen(entry: entry),
                           ),
                         ),
-                        onCopy: () async {
-                          final otp = totpService.generate(entry);
-                          await context
-                              .read<ClipboardService>()
-                              .copyOtp(otp, autoClear: settings.clipboardAutoClear);
-                          HapticFeedback.lightImpact();
-                        },
                       );
                     },
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -140,6 +126,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const LockScreen(),
       ],
     );
+  }
+
+  bool _needsSecuritySetup(AppSettings settings, AppLockState lockState) {
+    if (!lockState.hasPin) return true;
+    if (!settings.appLockEnabled) return true;
+    if (lockState.biometricsAvailable && !settings.biometricsEnabled) {
+      return true;
+    }
+    return false;
   }
 
   Future<void> _configureSecureWindow(bool enabled) async {

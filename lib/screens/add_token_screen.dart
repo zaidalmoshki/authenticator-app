@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -59,37 +62,59 @@ class _AddTokenScreenState extends State<AddTokenScreen>
 
   Widget _buildScanner(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Stack(
-      children: [
-        MobileScanner(
-          controller: _scannerController,
-          onDetect: (capture) {
-            if (capture.barcodes.isEmpty) return;
-            final value = capture.barcodes.first.rawValue;
-            if (value == null || value.isEmpty) return;
-            _handleScanned(value);
-          },
-        ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              color: Colors.black.withOpacity(0.6),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  l10n.qrHint,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Colors.white),
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double squareSize =
+            math.min(constraints.maxWidth, constraints.maxHeight) * 0.72;
+        final ui.Rect scanWindow = ui.Rect.fromCenter(
+          center: constraints.biggest.center(ui.Offset.zero),
+          width: squareSize,
+          height: squareSize,
+        );
+
+        return Stack(
+          children: [
+            MobileScanner(
+              controller: _scannerController,
+              scanWindow: scanWindow,
+              overlayBuilder: (_, __) => _ScannerOverlay(frame: scanWindow),
+              onDetect: (capture) {
+                if (capture.barcodes.isEmpty) return;
+                final value = capture.barcodes.first.rawValue;
+                if (value == null || value.isEmpty) return;
+                _handleScanned(value);
+              },
+            ),
+            Positioned.fill(
+              child: Column(
+                children: [
+                  _ScannerToolbar(
+                    controller: _scannerController,
+                    onClose: () => Navigator.of(context).pop(),
+                  ),
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Card(
+                      color: Colors.black.withOpacity(0.6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          l10n.qrHint,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -136,6 +161,105 @@ class _AddTokenScreenState extends State<AddTokenScreen>
     if (!mounted) return;
     HapticFeedback.lightImpact();
     Navigator.of(context).pop();
+  }
+}
+
+class _ScannerOverlay extends StatelessWidget {
+  const _ScannerOverlay({required this.frame});
+
+  final ui.Rect frame;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _ScannerOverlayPainter(frame),
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _ScannerOverlayPainter extends CustomPainter {
+  const _ScannerOverlayPainter(this.frame);
+
+  final ui.Rect frame;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Path background = Path()..addRect(Offset.zero & size);
+    final Path cutout = Path()
+      ..addRRect(RRect.fromRectAndRadius(frame, const Radius.circular(16)));
+    final Paint overlayPaint = Paint()
+      ..color = Colors.black.withOpacity(0.65)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(
+      Path.combine(PathOperation.difference, background, cutout),
+      overlayPaint,
+    );
+
+    final Paint borderPaint = Paint()
+      ..color = Colors.white.withOpacity(0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(frame, const Radius.circular(16)),
+      borderPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScannerOverlayPainter oldDelegate) {
+    return oldDelegate.frame != frame;
+  }
+}
+
+class _ScannerToolbar extends StatelessWidget {
+  const _ScannerToolbar({
+    required this.controller,
+    required this.onClose,
+  });
+
+  final MobileScannerController controller;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            IconButton.filled(
+              onPressed: onClose,
+              icon: const Icon(Icons.close_rounded),
+              tooltip: l10n.cancel,
+            ),
+            const Spacer(),
+            ValueListenableBuilder<MobileScannerState>(
+              valueListenable: controller,
+              builder: (context, state, _) {
+                final bool torchAvailable =
+                    state.torchState != TorchState.unavailable;
+                final bool torchOn = state.torchState == TorchState.on;
+                return IconButton.filledTonal(
+                  onPressed: torchAvailable ? () => controller.toggleTorch() : null,
+                  icon: Icon(
+                    torchOn
+                        ? Icons.flash_on_rounded
+                        : Icons.flash_off_rounded,
+                  ),
+                  tooltip: torchAvailable
+                      ? l10n.toggleTorch
+                      : l10n.torchUnavailable,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
