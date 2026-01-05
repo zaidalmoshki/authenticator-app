@@ -1,45 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 
 import '../models/token_entry.dart';
+import '../l10n/app_localizations.dart';
+import '../services/clipboard_service.dart';
 import '../services/totp_service.dart';
 import '../state/app_providers.dart';
 import '../widgets/countdown_ring.dart';
 
-class TokenDetailScreen extends ConsumerStatefulWidget {
+class TokenDetailScreen extends StatefulWidget {
   const TokenDetailScreen({super.key, required this.entry});
 
   final TokenEntry entry;
 
   @override
-  ConsumerState<TokenDetailScreen> createState() => _TokenDetailScreenState();
+  State<TokenDetailScreen> createState() => _TokenDetailScreenState();
 }
 
-class _TokenDetailScreenState extends ConsumerState<TokenDetailScreen>
-    with TickerProviderStateMixin {
-  late final AnimationController _ticker;
+class _TokenDetailScreenState extends State<TokenDetailScreen> {
+  Timer? _ticker;
   final ValueNotifier<DateTime> _now = ValueNotifier<DateTime>(DateTime.now());
 
   @override
   void initState() {
     super.initState();
-    _ticker = AnimationController.unbounded(vsync: this)
-      ..addListener(() => _now.value = DateTime.now())
-      ..repeat(period: const Duration(milliseconds: 1000));
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _now.value = DateTime.now();
+    });
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _ticker?.cancel();
     _now.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final totpService = ref.watch(totpServiceProvider);
-    final settings = ref.watch(settingsProvider);
+    final l10n = AppLocalizations.of(context);
+    final totpService = context.read<TotpService>();
+    final settings = context.watch<SettingsCubit>().state;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.entry.issuer),
@@ -94,13 +97,13 @@ class _TokenDetailScreenState extends ConsumerState<TokenDetailScreen>
                 FilledButton.icon(
                   onPressed: () async {
                     final otp = totpService.generate(widget.entry);
-                    await ref
-                        .read(clipboardServiceProvider)
+                    await context
+                        .read<ClipboardService>()
                         .copyOtp(otp, autoClear: settings.clipboardAutoClear);
                     HapticFeedback.lightImpact();
                   },
                   icon: const Icon(Icons.copy_rounded),
-                  label: const Text('Copy code'),
+                  label: Text(l10n.copyCode),
                 ),
               ],
             ),
@@ -111,25 +114,26 @@ class _TokenDetailScreenState extends ConsumerState<TokenDetailScreen>
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete token'),
-        content: const Text('This token will be removed from your device.'),
+        title: Text(l10n.deleteToken),
+        content: Text(l10n.deleteMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(l10n.deleteToken),
           ),
         ],
       ),
     );
     if (result != true) return;
-    await ref.read(tokensProvider.notifier).remove(widget.entry.id);
+    await context.read<TokensCubit>().removeToken(widget.entry.id);
     if (!mounted) return;
     HapticFeedback.mediumImpact();
     Navigator.of(context).pop();

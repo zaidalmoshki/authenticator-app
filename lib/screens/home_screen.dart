@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_windowmanager/flutter_windowmanager.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/app_settings.dart';
 import '../models/token_entry.dart';
+import '../l10n/app_localizations.dart';
+import '../services/clipboard_service.dart';
+import '../services/secure_window.dart';
 import '../services/totp_service.dart';
 import '../state/app_providers.dart';
 import '../widgets/token_tile.dart';
@@ -14,40 +18,45 @@ import 'lock_screen.dart';
 import 'settings_screen.dart';
 import 'token_detail_screen.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
-  late final AnimationController _ticker;
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  Timer? _ticker;
   final ValueNotifier<DateTime> _now = ValueNotifier<DateTime>(DateTime.now());
+  StreamSubscription<AppSettings>? _settingsSub;
   bool? _secureWindowEnabled;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _ticker = AnimationController.unbounded(vsync: this)
-      ..addListener(() {
-        _now.value = DateTime.now();
-      })
-      ..repeat(period: const Duration(milliseconds: 1000));
+    final initialSettings = context.read<SettingsCubit>().state;
+    context.read<AppLockCubit>().updateSettings(initialSettings);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settings = ref.read(settingsProvider);
-      if (settings.appLockEnabled) {
-        ref.read(appLockProvider.notifier).lock();
+      if (initialSettings.appLockEnabled) {
+        context.read<AppLockCubit>().lock();
       }
+      _configureSecureWindow(initialSettings.screenshotProtection);
+    });
+    _settingsSub = context.read<SettingsCubit>().stream.listen((next) {
+      context.read<AppLockCubit>().updateSettings(next);
+      _configureSecureWindow(next.screenshotProtection);
+    });
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _now.value = DateTime.now();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _ticker.dispose();
+    _settingsSub?.cancel();
+    _ticker?.cancel();
     _now.dispose();
     super.dispose();
   }
@@ -55,24 +64,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      ref.read(appLockProvider.notifier).lock();
+      context.read<AppLockCubit>().lock();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = ref.watch(tokensProvider);
-    final totpService = ref.watch(totpServiceProvider);
-    final settings = ref.watch(settingsProvider);
-    final lockState = ref.watch(appLockProvider);
-
-    _configureSecureWindow(settings.screenshotProtection);
+    final l10n = AppLocalizations.of(context);
+    final List<TokenEntry> tokens = context.watch<TokensCubit>().state;
+    final TotpService totpService = context.read<TotpService>();
+    final AppSettings settings = context.watch<SettingsCubit>().state;
+    final AppLockState lockState = context.watch<AppLockCubit>().state;
 
     return Stack(
       children: [
         Scaffold(
           appBar: AppBar(
-            title: const Text('Authenticator'),
+            title: Text(l10n.appTitle),
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings_rounded),
@@ -86,16 +94,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AddTokenScreen()),
             ),
-            label: const Text('Add token'),
+            label: Text(l10n.addToken),
             icon: const Icon(Icons.add_rounded),
           ),
           body: SafeArea(
             child: tokens.isEmpty
-                ? _EmptyState(onAdd: () {
+                ? _EmptyState(
+                    onAdd: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const AddTokenScreen()),
                     );
-                  })
+                  },
+                    title: l10n.emptyTitle,
+                    subtitle: l10n.emptySubtitle,
+                    buttonLabel: l10n.addToken,
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemBuilder: (context, index) {
@@ -111,8 +124,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ),
                         onCopy: () async {
                           final otp = totpService.generate(entry);
-                          await ref
-                              .read(clipboardServiceProvider)
+                          await context
+                              .read<ClipboardService>()
                               .copyOtp(otp, autoClear: settings.clipboardAutoClear);
                           HapticFeedback.lightImpact();
                         },
@@ -134,18 +147,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return;
     }
     _secureWindowEnabled = enabled;
-    if (enabled) {
-      await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
-    } else {
-      await FlutterWindowManager.clearFlags(FlutterWindowManager.FLAG_SECURE);
-    }
+    await SecureWindow.setSecureFlag(enabled);
   }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
+  const _EmptyState({
+    required this.onAdd,
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+  });
 
   final VoidCallback onAdd;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -162,14 +179,14 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No tokens yet',
+              title,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Add your first account to start generating secure codes.',
+              subtitle,
               textAlign: TextAlign.center,
               style: Theme.of(context)
                   .textTheme
@@ -180,7 +197,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Add token'),
+              label: Text(buttonLabel),
             ),
           ],
         ),

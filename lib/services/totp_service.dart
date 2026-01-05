@@ -5,18 +5,19 @@ import '../models/token_entry.dart';
 class TotpService {
   String generate(TokenEntry entry, {DateTime? time}) {
     final algorithm = switch (entry.algorithm) {
-      OtpAlgorithm.sha256 => Algorithm.SHA256,
-      OtpAlgorithm.sha512 => Algorithm.SHA512,
-      _ => Algorithm.SHA1,
+      OtpAlgorithm.sha256 => Algorithm.sha256,
+      OtpAlgorithm.sha512 => Algorithm.sha512,
+      _ => Algorithm.sha1,
     };
 
-    return TOTP.generate(
-      entry.secretBase32,
+    final totp = Totp.fromBase32(
+      secret: entry.secretBase32,
       algorithm: algorithm,
-      interval: entry.periodSeconds,
-      length: entry.digits,
-      timestamp: (time ?? DateTime.now()).millisecondsSinceEpoch,
+      digits: entry.digits,
+      period: entry.periodSeconds,
     );
+
+    return totp.generate(time ?? DateTime.now());
   }
 
   double progress(TokenEntry entry, DateTime now) {

@@ -1,29 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_settings.dart';
+import '../l10n/app_localizations.dart';
 import '../state/app_providers.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-    final lockState = ref.watch(appLockProvider);
-    final lockController = ref.read(appLockProvider.notifier);
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final settings = context.watch<SettingsCubit>().state;
+    final lockState = context.watch<AppLockCubit>().state;
+    final lockController = context.read<AppLockCubit>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _Section(title: 'Security', children: [
+          _Section(title: l10n.security, children: [
             SwitchListTile.adaptive(
               value: settings.appLockEnabled,
-              title: const Text('App Lock'),
-              subtitle: const Text('Require biometrics or PIN to unlock'),
+              title: Text(l10n.appLock),
+              subtitle: Text(l10n.appLockSubtitle),
               onChanged: (enabled) async {
                 if (enabled && !lockState.hasPin) {
                   final pin = await _showPinSetup(context);
@@ -31,26 +33,26 @@ class SettingsScreen extends ConsumerWidget {
                   await lockController.setPin(pin);
                 }
                 final updated = settings.copyWith(appLockEnabled: enabled);
-                await ref.read(settingsProvider.notifier).update(updated);
+                await context.read<SettingsCubit>().update(updated);
                 HapticFeedback.selectionClick();
               },
             ),
             SwitchListTile.adaptive(
               value: settings.biometricsEnabled,
-              title: const Text('Biometrics'),
-              subtitle: const Text('Use Face ID or fingerprint when available'),
+              title: Text(l10n.biometrics),
+              subtitle: Text(l10n.biometricsSubtitle),
               onChanged: lockState.biometricsAvailable
                   ? (enabled) async {
                       final updated =
                           settings.copyWith(biometricsEnabled: enabled);
-                      await ref.read(settingsProvider.notifier).update(updated);
+                      await context.read<SettingsCubit>().update(updated);
                       HapticFeedback.selectionClick();
                     }
                   : null,
             ),
             ListTile(
-              title: const Text('Change PIN'),
-              subtitle: const Text('Update your app lock PIN'),
+              title: Text(l10n.changePin),
+              subtitle: Text(l10n.changePinSubtitle),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () async {
                 final pin = await _showPinSetup(context);
@@ -61,35 +63,35 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ]),
           const SizedBox(height: 12),
-          _Section(title: 'Privacy', children: [
+          _Section(title: l10n.privacy, children: [
             SwitchListTile.adaptive(
               value: settings.clipboardAutoClear,
-              title: const Text('Auto-clear clipboard'),
-              subtitle: const Text('Remove copied OTPs after 30 seconds'),
+              title: Text(l10n.clipboardAutoClear),
+              subtitle: Text(l10n.clipboardAutoClearSubtitle),
               onChanged: (value) async {
                 final updated = settings.copyWith(clipboardAutoClear: value);
-                await ref.read(settingsProvider.notifier).update(updated);
+                await context.read<SettingsCubit>().update(updated);
                 HapticFeedback.selectionClick();
               },
             ),
             SwitchListTile.adaptive(
               value: settings.screenshotProtection,
-              title: const Text('Screenshot protection'),
-              subtitle: const Text('Block screenshots on sensitive screens'),
+              title: Text(l10n.screenshotProtection),
+              subtitle: Text(l10n.screenshotProtectionSubtitle),
               onChanged: (value) async {
                 final updated = settings.copyWith(screenshotProtection: value);
-                await ref.read(settingsProvider.notifier).update(updated);
+                await context.read<SettingsCubit>().update(updated);
                 HapticFeedback.selectionClick();
               },
             ),
           ]),
           const SizedBox(height: 12),
-          _Section(title: 'Appearance', children: [
+          _Section(title: l10n.appearance, children: [
             ListTile(
-              title: const Text('Theme'),
-              subtitle: Text(_themeLabel(settings.themeMode)),
+              title: Text(l10n.theme),
+              subtitle: Text(_themeLabel(l10n, settings.themeMode)),
               trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => _showThemePicker(context, ref, settings),
+              onTap: () => _showThemePicker(context, settings),
             ),
           ]),
         ],
@@ -97,19 +99,19 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  String _themeLabel(ThemeMode mode) {
+  String _themeLabel(AppLocalizations l10n, ThemeMode mode) {
     return switch (mode) {
-      ThemeMode.light => 'Light',
-      ThemeMode.dark => 'Dark',
-      _ => 'System',
+      ThemeMode.light => l10n.themeLight,
+      ThemeMode.dark => l10n.themeDark,
+      _ => l10n.themeSystem,
     };
   }
 
   Future<void> _showThemePicker(
     BuildContext context,
-    WidgetRef ref,
     AppSettings settings,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final selected = await showModalBottomSheet<ThemeMode>(
       context: context,
       showDragHandle: true,
@@ -117,9 +119,9 @@ class SettingsScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _ThemeOption(mode: ThemeMode.system, label: 'System'),
-            _ThemeOption(mode: ThemeMode.light, label: 'Light'),
-            _ThemeOption(mode: ThemeMode.dark, label: 'Dark'),
+            _ThemeOption(mode: ThemeMode.system, label: l10n.themeSystem),
+            _ThemeOption(mode: ThemeMode.light, label: l10n.themeLight),
+            _ThemeOption(mode: ThemeMode.dark, label: l10n.themeDark),
           ].map((option) {
             final isSelected = option.mode == settings.themeMode;
             return ListTile(
@@ -134,12 +136,13 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
     if (selected == null) return;
-    await ref
-        .read(settingsProvider.notifier)
+    await context
+        .read<SettingsCubit>()
         .update(settings.copyWith(themeMode: selected));
   }
 
   Future<String?> _showPinSetup(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final controller = TextEditingController();
     final confirmController = TextEditingController();
 
@@ -147,7 +150,7 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Set PIN'),
+          title: Text(l10n.setPin),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -156,21 +159,21 @@ class SettingsScreen extends ConsumerWidget {
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'PIN'),
+                decoration: InputDecoration(labelText: l10n.pin),
               ),
               TextField(
                 controller: confirmController,
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'Confirm PIN'),
+                decoration: InputDecoration(labelText: l10n.confirmPin),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -182,7 +185,7 @@ class SettingsScreen extends ConsumerWidget {
                 }
                 Navigator.of(context).pop(pin);
               },
-              child: const Text('Save'),
+              child: Text(l10n.save),
             ),
           ],
         );

@@ -1,6 +1,7 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
-class AppSettings {
+class AppSettings extends Equatable {
   const AppSettings({
     required this.appLockEnabled,
     required this.biometricsEnabled,
@@ -14,6 +15,15 @@ class AppSettings {
   final bool clipboardAutoClear;
   final bool screenshotProtection;
   final ThemeMode themeMode;
+
+  @override
+  List<Object?> get props => [
+        appLockEnabled,
+        biometricsEnabled,
+        clipboardAutoClear,
+        screenshotProtection,
+        themeMode,
+      ];
 
   factory AppSettings.defaults() => const AppSettings(
         appLockEnabled: false,

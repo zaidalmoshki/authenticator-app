@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/token_entry.dart';
+import '../l10n/app_localizations.dart';
 import '../services/totp_service.dart';
 import 'countdown_ring.dart';
 
@@ -22,6 +24,7 @@ class TokenTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -86,7 +89,7 @@ class TokenTile extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.copy_rounded),
                         onPressed: onCopy,
-                        tooltip: 'Copy code',
+                        tooltip: l10n.copyCode,
                       ),
                     ],
                   );

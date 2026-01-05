@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 
-import '../models/app_settings.dart';
 import 'secure_storage_service.dart';
 
 class AppLockService {

@@ -9,13 +9,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.5.1
+  flutter_localizations:
+    sdk: flutter
+  flutter_bloc: ^8.1.6
   mobile_scanner: ^5.1.1
-  totp: ^0.3.0
+  totp: ^0.1.0
   flutter_secure_storage: ^9.2.2
   local_auth: ^2.2.0
-  flutter_windowmanager: ^0.2.0
   crypto: ^3.0.3
+  meta: ^1.16.0
+  equatable: ^2.0.5
 
   cupertino_icons: ^1.0.6
 

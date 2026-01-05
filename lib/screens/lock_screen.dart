@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../l10n/app_localizations.dart';
 import '../state/app_providers.dart';
 
-class LockScreen extends ConsumerStatefulWidget {
+class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
 
   @override
-  ConsumerState<LockScreen> createState() => _LockScreenState();
+  State<LockScreen> createState() => _LockScreenState();
 }
 
-class _LockScreenState extends ConsumerState<LockScreen> {
+class _LockScreenState extends State<LockScreen> {
   final TextEditingController _controller = TextEditingController();
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    ref.read(appLockProvider.notifier).refreshBiometricsAvailability();
+    context.read<AppLockCubit>().refreshBiometricsAvailability();
   }
 
   @override
@@ -28,36 +29,37 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   }
 
   Future<void> _unlockWithBiometrics() async {
-    final success = await ref.read(appLockProvider.notifier).tryBiometricUnlock();
+    final success = await context.read<AppLockCubit>().tryBiometricUnlock();
     if (success) {
       HapticFeedback.lightImpact();
       return;
     }
-    setState(() => _error = 'Biometric unlock failed. Use your PIN.');
+    setState(() => _error = AppLocalizations.of(context).bioFailed);
   }
 
   Future<void> _submitPin() async {
     final pin = _controller.text.trim();
-    final backoff = ref.read(appLockProvider.notifier).currentBackoff();
+    final backoff = context.read<AppLockCubit>().currentBackoff();
     if (backoff != null) {
-      setState(() => _error = 'Try again in ${backoff.inSeconds}s.');
+      setState(() => _error = AppLocalizations.of(context).pinBackoff(backoff.inSeconds));
       return;
     }
-    final success = await ref.read(appLockProvider.notifier).verifyPin(pin);
+    final success = await context.read<AppLockCubit>().verifyPin(pin);
     if (success) {
       HapticFeedback.lightImpact();
       _controller.clear();
       setState(() => _error = null);
       return;
     }
-    setState(() => _error = 'Incorrect PIN.');
+    setState(() => _error = AppLocalizations.of(context).pinIncorrect);
     HapticFeedback.heavyImpact();
     _controller.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    final lockState = ref.watch(appLockProvider);
+    final l10n = AppLocalizations.of(context);
+    final lockState = context.watch<AppLockCubit>().state;
     return Material(
       color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
       child: SafeArea(
@@ -76,14 +78,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Unlock',
+                    l10n.unlock,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Enter your PIN or use biometrics.',
+                    l10n.unlockSubtitle,
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme
@@ -98,7 +100,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                     maxLength: 6,
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      labelText: 'PIN',
+                      labelText: l10n.pin,
                       errorText: _error,
                       counterText: '',
                     ),
@@ -107,14 +109,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   const SizedBox(height: 8),
                   FilledButton(
                     onPressed: _submitPin,
-                    child: const Text('Unlock'),
+                    child: Text(l10n.unlock),
                   ),
                   const SizedBox(height: 12),
                   if (lockState.biometricsAvailable)
                     TextButton.icon(
                       onPressed: _unlockWithBiometrics,
                       icon: const Icon(Icons.fingerprint_rounded),
-                      label: const Text('Use biometrics'),
+                      label: Text(l10n.useBiometrics),
                     ),
                 ],
               ),

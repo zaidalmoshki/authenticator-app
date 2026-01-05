@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../models/token_entry.dart';
+import '../l10n/app_localizations.dart';
 import '../state/app_providers.dart';
 import '../utils/otpauth_parser.dart';
 
-class AddTokenScreen extends ConsumerStatefulWidget {
+class AddTokenScreen extends StatefulWidget {
   const AddTokenScreen({super.key});
 
   @override
-  ConsumerState<AddTokenScreen> createState() => _AddTokenScreenState();
+  State<AddTokenScreen> createState() => _AddTokenScreenState();
 }
 
-class _AddTokenScreenState extends ConsumerState<AddTokenScreen>
+class _AddTokenScreenState extends State<AddTokenScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _controller;
   final MobileScannerController _scannerController = MobileScannerController();
@@ -34,14 +35,15 @@ class _AddTokenScreenState extends ConsumerState<AddTokenScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add token'),
+        title: Text(l10n.addToken),
         bottom: TabBar(
           controller: _controller,
-          tabs: const [
-            Tab(text: 'Scan QR'),
-            Tab(text: 'Manual'),
+          tabs: [
+            Tab(text: l10n.scanQr),
+            Tab(text: l10n.manual),
           ],
         ),
       ),
@@ -56,6 +58,7 @@ class _AddTokenScreenState extends ConsumerState<AddTokenScreen>
   }
 
   Widget _buildScanner(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Stack(
       children: [
         MobileScanner(
@@ -76,7 +79,7 @@ class _AddTokenScreenState extends ConsumerState<AddTokenScreen>
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Align the QR code within the frame.',
+                  l10n.qrHint,
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
@@ -105,7 +108,7 @@ class _AddTokenScreenState extends ConsumerState<AddTokenScreen>
     } on FormatException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid QR code')),
+        SnackBar(content: Text(AppLocalizations.of(context).invalidQr)),
       );
       await _scannerController.start();
     }
@@ -129,14 +132,14 @@ class _AddTokenScreenState extends ConsumerState<AddTokenScreen>
       algorithm: algorithm,
       createdAt: DateTime.now(),
     );
-    await ref.read(tokensProvider.notifier).add(entry);
+    await context.read<TokensCubit>().addToken(entry);
     if (!mounted) return;
     HapticFeedback.lightImpact();
     Navigator.of(context).pop();
   }
 }
 
-class _ManualEntryForm extends ConsumerStatefulWidget {
+class _ManualEntryForm extends StatefulWidget {
   const _ManualEntryForm({required this.onSave});
 
   final Future<void> Function({
@@ -149,10 +152,10 @@ class _ManualEntryForm extends ConsumerStatefulWidget {
   }) onSave;
 
   @override
-  ConsumerState<_ManualEntryForm> createState() => _ManualEntryFormState();
+  State<_ManualEntryForm> createState() => _ManualEntryFormState();
 }
 
-class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
+class _ManualEntryFormState extends State<_ManualEntryForm> {
   final _formKey = GlobalKey<FormState>();
   final _issuerController = TextEditingController();
   final _accountController = TextEditingController();
@@ -171,6 +174,7 @@ class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Form(
       key: _formKey,
       child: ListView(
@@ -178,20 +182,20 @@ class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
         children: [
           TextFormField(
             controller: _issuerController,
-            decoration: const InputDecoration(labelText: 'Issuer'),
+            decoration: InputDecoration(labelText: l10n.issuer),
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _accountController,
-            decoration: const InputDecoration(labelText: 'Account'),
+            decoration: InputDecoration(labelText: l10n.account),
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _secretController,
-            decoration: const InputDecoration(labelText: 'Secret (Base32)'),
+            decoration: InputDecoration(labelText: l10n.secret),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Enter a secret';
+                return l10n.secretError;
               }
               return null;
             },
@@ -202,10 +206,10 @@ class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   value: _digits,
-                  decoration: const InputDecoration(labelText: 'Digits'),
-                  items: const [
-                    DropdownMenuItem(value: 6, child: Text('6 digits')),
-                    DropdownMenuItem(value: 8, child: Text('8 digits')),
+                  decoration: InputDecoration(labelText: l10n.digits),
+                  items: [
+                    DropdownMenuItem(value: 6, child: Text(l10n.digits6)),
+                    DropdownMenuItem(value: 8, child: Text(l10n.digits8)),
                   ],
                   onChanged: (value) => setState(() => _digits = value ?? 6),
                 ),
@@ -214,10 +218,10 @@ class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   value: _period,
-                  decoration: const InputDecoration(labelText: 'Period'),
-                  items: const [
-                    DropdownMenuItem(value: 30, child: Text('30s')),
-                    DropdownMenuItem(value: 60, child: Text('60s')),
+                  decoration: InputDecoration(labelText: l10n.period),
+                  items: [
+                    DropdownMenuItem(value: 30, child: Text(l10n.period30)),
+                    DropdownMenuItem(value: 60, child: Text(l10n.period60)),
                   ],
                   onChanged: (value) => setState(() => _period = value ?? 30),
                 ),
@@ -227,11 +231,11 @@ class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
           const SizedBox(height: 12),
           DropdownButtonFormField<OtpAlgorithm>(
             value: _algorithm,
-            decoration: const InputDecoration(labelText: 'Algorithm'),
-            items: const [
-              DropdownMenuItem(value: OtpAlgorithm.sha1, child: Text('SHA1')),
-              DropdownMenuItem(value: OtpAlgorithm.sha256, child: Text('SHA256')),
-              DropdownMenuItem(value: OtpAlgorithm.sha512, child: Text('SHA512')),
+            decoration: InputDecoration(labelText: l10n.algorithm),
+            items: [
+              DropdownMenuItem(value: OtpAlgorithm.sha1, child: Text(l10n.sha1)),
+              DropdownMenuItem(value: OtpAlgorithm.sha256, child: Text(l10n.sha256)),
+              DropdownMenuItem(value: OtpAlgorithm.sha512, child: Text(l10n.sha512)),
             ],
             onChanged: (value) =>
                 setState(() => _algorithm = value ?? OtpAlgorithm.sha1),
@@ -249,7 +253,7 @@ class _ManualEntryFormState extends ConsumerState<_ManualEntryForm> {
                 algorithm: _algorithm,
               );
             },
-            child: const Text('Save token'),
+            child: Text(l10n.addToken),
           ),
         ],
       ),

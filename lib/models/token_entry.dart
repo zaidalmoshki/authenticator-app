@@ -1,9 +1,10 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 
 enum OtpAlgorithm { sha1, sha256, sha512 }
 
 @immutable
-class TokenEntry {
+class TokenEntry extends Equatable {
   const TokenEntry({
     required this.id,
     required this.issuer,
@@ -23,6 +24,18 @@ class TokenEntry {
   final int periodSeconds;
   final OtpAlgorithm algorithm;
   final DateTime createdAt;
+
+  @override
+  List<Object?> get props => [
+        id,
+        issuer,
+        account,
+        secretBase32,
+        digits,
+        periodSeconds,
+        algorithm,
+        createdAt,
+      ];
 
   TokenEntry copyWith({
     String? id,
